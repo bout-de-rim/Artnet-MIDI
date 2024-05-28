@@ -2,13 +2,19 @@ import socket
 import logging
 
 class ArtNetListener:
-    def __init__(self, ip="0.0.0.0", port=6454):
+    def __init__(self, ip="0.0.0.0", port=6454, universe=0):
         self.UDP_IP = ip
         self.UDP_PORT = port
+        self.universe = universe
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.UDP_IP, self.UDP_PORT))
         self.sock.setblocking(False)
-        logging.info("Art-Net listener started on IP %s, port %d", self.UDP_IP, self.UDP_PORT)
+        self.received_universes = set()
+        logging.info("Art-Net listener started on IP %s, port %d, universe %d", self.UDP_IP, self.UDP_PORT, self.universe)
+
+    def set_universe(self, universe):
+        self.universe = universe
+        logging.info("Art-Net listener universe changed to %d", self.universe)
 
     def receive_packet(self):
         try:
@@ -21,7 +27,10 @@ class ArtNetListener:
         if packet and packet[:8] == b'Art-Net\x00':
             opcode = int.from_bytes(packet[8:10], byteorder='little')
             if opcode == 0x5000:  # OpOutput / ArtDMX
-                dmx_data = packet[18:]  # DMX data starts at byte 18
-                logging.debug("Parsed Art-Net DMX data: %s", dmx_data)
-                return dmx_data
+                universe = int.from_bytes(packet[14:16], byteorder='little')
+                self.received_universes.add(universe)
+                if universe == self.universe:
+                    dmx_data = packet[18:]  # DMX data starts at byte 18
+                    #logging.debug("Parsed Art-Net DMX data: %s", dmx_data)
+                    return dmx_data
         return None

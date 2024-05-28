@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QButtonGroup, QMessageBox, QSystemTrayIcon, QGroupBox, QHBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QButtonGroup, QMessageBox, QSystemTrayIcon, QGroupBox, QHBoxLayout, QSpinBox, QListWidget
 from PyQt5.QtGui import QIcon, QFont, QPainter, QColor
 from PyQt5.QtCore import Qt
 import mido
@@ -47,9 +47,14 @@ class ConfigWindow(QMainWindow):
         self.previous_dmx_values = [0] * 512  # Initialiser les valeurs précédentes des canaux DMX
         self.initUI()
 
+    def tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.DoubleClick:
+            self.show()
+
+
     def initUI(self):
         self.setWindowTitle('Configuration')
-        self.setGeometry(100, 100, 400, 600)
+        self.setGeometry(100, 100, 400, 700)
 
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
@@ -95,6 +100,26 @@ class ConfigWindow(QMainWindow):
 
         conversion_group.setLayout(conversion_layout)
 
+        # Art-Net Universe Selection
+        universe_group = QGroupBox("Select Art-Net Universe")
+        universe_layout = QVBoxLayout()
+
+        self.universe_spinbox = QSpinBox(self)
+        self.universe_spinbox.setRange(0, 32767)  # Art-Net supports up to 32767 universes
+        self.universe_spinbox.valueChanged.connect(self.change_universe)
+        universe_layout.addWidget(self.universe_spinbox)
+
+        universe_group.setLayout(universe_layout)
+
+        # Received Universes
+        received_group = QGroupBox("Received Art-Net Universes")
+        received_layout = QVBoxLayout()
+
+        self.received_list = QListWidget(self)
+        received_layout.addWidget(self.received_list)
+
+        received_group.setLayout(received_layout)
+
         # Start Button
         self.start_button = QPushButton("Start Art-Net Listener", self)
         self.start_button.setStyleSheet("padding: 10px; font-size: 14px;")
@@ -128,6 +153,8 @@ class ConfigWindow(QMainWindow):
         main_layout.addWidget(midi_group)
         main_layout.addWidget(mode_group)
         main_layout.addWidget(conversion_group)
+        main_layout.addWidget(universe_group)
+        main_layout.addWidget(received_group)
         main_layout.addWidget(self.start_button)
         main_layout.addWidget(status_group)
         main_layout.addWidget(donation_group)
@@ -153,10 +180,14 @@ class ConfigWindow(QMainWindow):
             if index != -1:
                 self.noteon_conversion_combo.setCurrentIndex(index)
 
+        if 'universe' in self.config:
+            self.universe_spinbox.setValue(self.config['universe'])
+
     def save_config(self):
         self.config['midi_output'] = self.midi_ports_combo.currentText()
         self.config['mode'] = 'MSC' if self.msc_mode.isChecked() else 'NoteOn'
         self.config['conversion_type'] = self.noteon_conversion_combo.currentText()
+        self.config['universe'] = self.universe_spinbox.value()
         save_config(self.config)
 
     def update_midi_output(self):
@@ -170,17 +201,26 @@ class ConfigWindow(QMainWindow):
         if selected_port and self.midi_output.open_output(selected_port):
             self.save_config()
             logging.info("Selected MIDI output port: %s", selected_port)
-            self.artnet_listener = ArtNetListener()
+            universe = self.universe_spinbox.value()
+            self.artnet_listener = ArtNetListener(universe=universe)
             self.timer = self.startTimer(10)  # Appel périodique pour vérifier les paquets
-            logging.info("Art-Net listener started on IP %s, port %d", self.artnet_listener.UDP_IP, self.artnet_listener.UDP_PORT)
+            logging.info("Art-Net listener started on IP %s, port %d, universe %d", self.artnet_listener.UDP_IP, self.artnet_listener.UDP_PORT, universe)
             self.start_button.setEnabled(False)  # Désactiver le bouton après démarrage
             self.status_indicator.update_status("ON")
+
+    def change_universe(self):
+        if self.artnet_listener:
+            new_universe = self.universe_spinbox.value()
+            self.artnet_listener.set_universe(new_universe)
+            self.save_config()
+            logging.info("Changed Art-Net universe to %d", new_universe)
 
     def timerEvent(self, event):
         data, addr = self.artnet_listener.receive_packet()
         dmx_data = self.artnet_listener.parse_artnet_packet(data)
         if dmx_data:
             self.status_indicator.update_status("RECEIVED")
+            self.update_received_universes()
             for channel in range(1, 513):
                 dmx_value = dmx_data[channel - 1]
                 if dmx_value != self.previous_dmx_values[channel - 1]:  # Vérifier le changement d'état
@@ -191,6 +231,11 @@ class ConfigWindow(QMainWindow):
                     elif self.noteon_mode.isChecked():
                         conversion_type = self.noteon_conversion_combo.currentText()
                         self.midi_output.send_noteon_message(channel, dmx_value, conversion_type)
+
+    def update_received_universes(self):
+        self.received_list.clear()
+        for universe in sorted(self.artnet_listener.received_universes):
+            self.received_list.addItem(str(universe))
 
     def dmx_to_msc(self, dmx_channel, dmx_value):
         msc_control_number = 512 + (dmx_channel - 1)  # Mapping 512-1023 for DMX channels 1-512

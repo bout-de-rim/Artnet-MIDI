@@ -26,10 +26,12 @@ def create_tray_icon(app, window):
     tray_menu.addAction(exit_action)
 
     tray_icon.setContextMenu(tray_menu)
+    tray_icon.activated.connect(window.tray_icon_activated)
     tray_icon.show()
     logging.info("System tray icon created")
 
     return tray_icon
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
