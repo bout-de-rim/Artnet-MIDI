@@ -15,6 +15,7 @@ class ConfigWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.midi_outport = None
+        self.tray_icon = None
         self.initUI()
         self.previous_dmx_values = [0] * 512  # Initialiser les valeurs précédentes des canaux DMX
 
@@ -63,19 +64,28 @@ class ConfigWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
-    def update_midi_output(self):
-        selected_port = self.midi_ports_combo.currentText()
-        if selected_port:
+    def open_midi_output(self, selected_port):
+        try:
             if self.midi_outport:
                 self.midi_outport.close()
             self.midi_outport = mido.open_output(selected_port)
             logging.info("Updated MIDI output port to: %s", selected_port)
+        except IOError as e:
+            logging.error("Failed to open MIDI output port: %s", e)
+            if self.tray_icon:
+                self.tray_icon.showMessage("MIDI Output Error", f"Failed to open MIDI output port: {e}", QSystemTrayIcon.Critical)
+            QMessageBox.critical(self, "MIDI Output Error", f"Failed to open MIDI output port: {e}")
+            return False
+        return True
+    
+    def update_midi_output(self):
+        selected_port = self.midi_ports_combo.currentText()
+        if selected_port and self.open_midi_output(selected_port):
             QMessageBox.information(self, "MIDI Output Updated", f"MIDI output port updated to: {selected_port}")
-
+    
     def start_artnet_listener(self):
         selected_port = self.midi_ports_combo.currentText()
-        if selected_port:
-            self.midi_outport = mido.open_output(selected_port)
+        if selected_port and self.open_midi_output(selected_port):
             logging.info("Selected MIDI output port: %s", selected_port)
             self.UDP_IP = "0.0.0.0"
             self.UDP_PORT = 6454
@@ -91,7 +101,7 @@ class ConfigWindow(QMainWindow):
             data, addr = self.sock.recvfrom(1024)
             dmx_data = self.parse_artnet_packet(data)
             if dmx_data:
-                logging.debug("Received Art-Net data from %s: %s", addr, dmx_data)
+                #logging.debug("Received Art-Net data from %s: %s", addr, dmx_data)
                 for channel in range(1, 513):
                     dmx_value = dmx_data[channel - 1]
                     if dmx_value != self.previous_dmx_values[channel - 1]:  # Vérifier le changement d'état
@@ -110,7 +120,7 @@ class ConfigWindow(QMainWindow):
             opcode = int.from_bytes(packet[8:10], byteorder='little')
             if opcode == 0x5000:  # OpOutput / ArtDMX
                 dmx_data = packet[18:]  # DMX data starts at byte 18
-                logging.debug("Parsed Art-Net DMX data: %s", dmx_data)
+                #logging.debug("Parsed Art-Net DMX data: %s", dmx_data)
                 return dmx_data
         return None
 
@@ -149,6 +159,7 @@ class ConfigWindow(QMainWindow):
 
 def create_tray_icon(app, window):
     tray_icon = QSystemTrayIcon(QIcon("artnet2midi.png"), app)
+    window.tray_icon = tray_icon
     
     tray_menu = QMenu()
     
