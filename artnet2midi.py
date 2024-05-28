@@ -196,6 +196,12 @@ class ConfigWindow(QMainWindow):
         self.midi_outport.send(msg)
         logging.info("Sent NoteOn message: %s", msg)
 
+    def closeEvent(self, event):
+        event.ignore()
+        self.hide()
+        if self.tray_icon:
+            self.tray_icon.showMessage("Artnet2MIDI", "The application is still running in the system tray.", QSystemTrayIcon.Information)
+
 def create_tray_icon(app, window):
     tray_icon = QSystemTrayIcon(QIcon("artnet2midi.png"), app)
     window.tray_icon = tray_icon
@@ -223,6 +229,8 @@ if __name__ == '__main__':
     
     tray_icon = create_tray_icon(app, window)
     
+    window.show()  # Show the configuration window at launch
+
     exit_code = app.exec_()
     if window.midi_outport:
         window.midi_outport.close()  # Fermer correctement le port MIDI
