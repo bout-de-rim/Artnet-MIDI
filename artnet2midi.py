@@ -1,9 +1,9 @@
 import sys
 import logging
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction
-from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QComboBox, QRadioButton, QButtonGroup, QGroupBox, QHBoxLayout
+from PyQt5.QtGui import QIcon, QFont
+
 from config_window import ConfigWindow
-from config import load_config, save_config
 
 # Configurer le logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[

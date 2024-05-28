@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QButtonGroup, QMessageBox, QSystemTrayIcon
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QButtonGroup, QMessageBox, QSystemTrayIcon, QGroupBox, QHBoxLayout
+from PyQt5.QtGui import QIcon, QFont
 import mido
 import logging
 from config import load_config, save_config
@@ -17,24 +18,29 @@ class ConfigWindow(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Configuration')
-        self.setGeometry(100, 100, 300, 400)
+        self.setGeometry(100, 100, 400, 500)
 
         central_widget = QWidget()
-        layout = QVBoxLayout(central_widget)
+        main_layout = QVBoxLayout(central_widget)
 
-        self.label = QLabel("Select MIDI Output Port", self)
-        layout.addWidget(self.label)
+        # Section MIDI Output
+        midi_group = QGroupBox("Select MIDI Output Port")
+        midi_layout = QVBoxLayout()
 
         self.midi_ports_combo = QComboBox(self)
         self.midi_ports_combo.addItems(mido.get_output_names())
-        layout.addWidget(self.midi_ports_combo)
+        midi_layout.addWidget(self.midi_ports_combo)
 
         self.update_midi_button = QPushButton("Update MIDI Output", self)
+        self.update_midi_button.setStyleSheet("padding: 10px; font-size: 14px;")
         self.update_midi_button.clicked.connect(self.update_midi_output)
-        layout.addWidget(self.update_midi_button)
+        midi_layout.addWidget(self.update_midi_button)
 
-        self.mode_label = QLabel("Select Mode", self)
-        layout.addWidget(self.mode_label)
+        midi_group.setLayout(midi_layout)
+
+        # Section Mode Selection
+        mode_group = QGroupBox("Select Mode")
+        mode_layout = QVBoxLayout()
 
         self.msc_mode = QRadioButton("MSC", self)
         self.noteon_mode = QRadioButton("NoteOn", self)
@@ -43,19 +49,32 @@ class ConfigWindow(QMainWindow):
         self.mode_group.addButton(self.msc_mode)
         self.mode_group.addButton(self.noteon_mode)
 
-        layout.addWidget(self.msc_mode)
-        layout.addWidget(self.noteon_mode)
+        mode_layout.addWidget(self.msc_mode)
+        mode_layout.addWidget(self.noteon_mode)
 
-        self.noteon_conversion_label = QLabel("NoteOn Conversion Type", self)
-        layout.addWidget(self.noteon_conversion_label)
+        mode_group.setLayout(mode_layout)
+
+        # Section NoteOn Conversion Type
+        conversion_group = QGroupBox("NoteOn Conversion Type")
+        conversion_layout = QVBoxLayout()
 
         self.noteon_conversion_combo = QComboBox(self)
         self.noteon_conversion_combo.addItems(["Proportionate", "Truncated"])
-        layout.addWidget(self.noteon_conversion_combo)
+        conversion_layout.addWidget(self.noteon_conversion_combo)
 
+        conversion_group.setLayout(conversion_layout)
+
+        # Start Button
         self.start_button = QPushButton("Start Art-Net Listener", self)
+        self.start_button.setStyleSheet("padding: 10px; font-size: 14px;")
         self.start_button.clicked.connect(self.start_artnet_listener)
-        layout.addWidget(self.start_button)
+        self.start_button.setEnabled(True)
+
+        # Add groups to main layout
+        main_layout.addWidget(midi_group)
+        main_layout.addWidget(mode_group)
+        main_layout.addWidget(conversion_group)
+        main_layout.addWidget(self.start_button)
 
         self.setCentralWidget(central_widget)
 
