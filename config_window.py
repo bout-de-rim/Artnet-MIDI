@@ -1,11 +1,40 @@
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QButtonGroup, QMessageBox, QSystemTrayIcon, QGroupBox, QHBoxLayout
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QPainter, QColor
+from PyQt5.QtCore import Qt
 import mido
 import logging
 from config import load_config, save_config
 from midi_output import MidiOutput
 from artnet_listener import ArtNetListener
 import webbrowser
+
+class StatusIndicator(QLabel):
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(100, 100)
+        self.status = "OFF"
+        self.setToolTip("Red: OFF\nOrange: ON, no Art-Net message\nGreen: Received Art-Net message")
+        self.update_status("OFF")
+
+    def update_status(self, status):
+        self.status = status
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        rect = self.contentsRect()
+
+        if self.status == "OFF":
+            color = QColor(Qt.red)
+        elif self.status == "ON":
+            color = QColor(255, 165, 0)  # Orange color
+        elif self.status == "RECEIVED":
+            color = QColor(Qt.green)
+
+        painter.setBrush(color)
+        painter.drawEllipse(rect)
+        painter.end()
 
 class ConfigWindow(QMainWindow):
     def __init__(self):
@@ -14,8 +43,9 @@ class ConfigWindow(QMainWindow):
         self.artnet_listener = None
         self.tray_icon = None
         self.config = load_config()
-        self.initUI()
+        self.status_indicator = StatusIndicator()
         self.previous_dmx_values = [0] * 512  # Initialiser les valeurs précédentes des canaux DMX
+        self.initUI()
 
     def initUI(self):
         self.setWindowTitle('Configuration')
@@ -71,6 +101,12 @@ class ConfigWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_artnet_listener)
         self.start_button.setEnabled(True)
 
+        # Status Indicator
+        status_group = QGroupBox("Server Status")
+        status_layout = QVBoxLayout()
+        status_layout.addWidget(self.status_indicator)
+        status_group.setLayout(status_layout)
+
         # Donation Section
         donation_group = QGroupBox("Donation")
         donation_layout = QVBoxLayout()
@@ -93,6 +129,7 @@ class ConfigWindow(QMainWindow):
         main_layout.addWidget(mode_group)
         main_layout.addWidget(conversion_group)
         main_layout.addWidget(self.start_button)
+        main_layout.addWidget(status_group)
         main_layout.addWidget(donation_group)
 
         self.setCentralWidget(central_widget)
@@ -137,11 +174,13 @@ class ConfigWindow(QMainWindow):
             self.timer = self.startTimer(10)  # Appel périodique pour vérifier les paquets
             logging.info("Art-Net listener started on IP %s, port %d", self.artnet_listener.UDP_IP, self.artnet_listener.UDP_PORT)
             self.start_button.setEnabled(False)  # Désactiver le bouton après démarrage
+            self.status_indicator.update_status("ON")
 
     def timerEvent(self, event):
         data, addr = self.artnet_listener.receive_packet()
         dmx_data = self.artnet_listener.parse_artnet_packet(data)
         if dmx_data:
+            self.status_indicator.update_status("RECEIVED")
             for channel in range(1, 513):
                 dmx_value = dmx_data[channel - 1]
                 if dmx_value != self.previous_dmx_values[channel - 1]:  # Vérifier le changement d'état
