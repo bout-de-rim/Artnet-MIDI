@@ -20,7 +20,7 @@ class ConfigWindow(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Configuration')
-        self.setGeometry(100, 100, 300, 350)
+        self.setGeometry(100, 100, 300, 400)
 
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
@@ -31,6 +31,10 @@ class ConfigWindow(QMainWindow):
         self.midi_ports_combo = QComboBox(self)
         self.midi_ports_combo.addItems(mido.get_output_names())
         layout.addWidget(self.midi_ports_combo)
+
+        self.update_midi_button = QPushButton("Update MIDI Output", self)
+        self.update_midi_button.clicked.connect(self.update_midi_output)
+        layout.addWidget(self.update_midi_button)
 
         self.mode_label = QLabel("Select Mode", self)
         layout.addWidget(self.mode_label)
@@ -53,11 +57,20 @@ class ConfigWindow(QMainWindow):
         self.noteon_conversion_combo.addItems(["Proportionate", "Truncated"])
         layout.addWidget(self.noteon_conversion_combo)
 
-        self.button = QPushButton("Start Art-Net Listener", self)
-        self.button.clicked.connect(self.start_artnet_listener)
-        layout.addWidget(self.button)
+        self.start_button = QPushButton("Start Art-Net Listener", self)
+        self.start_button.clicked.connect(self.start_artnet_listener)
+        layout.addWidget(self.start_button)
 
         self.setCentralWidget(central_widget)
+
+    def update_midi_output(self):
+        selected_port = self.midi_ports_combo.currentText()
+        if selected_port:
+            if self.midi_outport:
+                self.midi_outport.close()
+            self.midi_outport = mido.open_output(selected_port)
+            logging.info("Updated MIDI output port to: %s", selected_port)
+            QMessageBox.information(self, "MIDI Output Updated", f"MIDI output port updated to: {selected_port}")
 
     def start_artnet_listener(self):
         selected_port = self.midi_ports_combo.currentText()
@@ -71,7 +84,7 @@ class ConfigWindow(QMainWindow):
             self.sock.setblocking(False)
             self.timer = self.startTimer(10)  # Appel périodique pour vérifier les paquets
             logging.info("Art-Net listener started on IP %s, port %d", self.UDP_IP, self.UDP_PORT)
-            self.button.setEnabled(False)  # Désactiver le bouton après démarrage
+            self.start_button.setEnabled(False)  # Désactiver le bouton après démarrage
 
     def timerEvent(self, event):
         try:
