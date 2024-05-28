@@ -20,7 +20,7 @@ class ConfigWindow(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Configuration')
-        self.setGeometry(100, 100, 300, 300)
+        self.setGeometry(100, 100, 300, 350)
 
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
@@ -45,6 +45,13 @@ class ConfigWindow(QMainWindow):
 
         layout.addWidget(self.msc_mode)
         layout.addWidget(self.noteon_mode)
+
+        self.noteon_conversion_label = QLabel("NoteOn Conversion Type", self)
+        layout.addWidget(self.noteon_conversion_label)
+
+        self.noteon_conversion_combo = QComboBox(self)
+        self.noteon_conversion_combo.addItems(["Proportionate", "Truncated"])
+        layout.addWidget(self.noteon_conversion_combo)
 
         self.button = QPushButton("Start Art-Net Listener", self)
         self.button.clicked.connect(self.start_artnet_listener)
@@ -80,7 +87,8 @@ class ConfigWindow(QMainWindow):
                             msc_params = self.dmx_to_msc(channel, dmx_value)
                             self.send_msc_set_message(*msc_params)
                         elif self.noteon_mode.isChecked():
-                            self.send_noteon_message(channel, dmx_value)
+                            conversion_type = self.noteon_conversion_combo.currentText()
+                            self.send_noteon_message(channel, dmx_value, conversion_type)
         except BlockingIOError:
             pass
 
@@ -112,10 +120,14 @@ class ConfigWindow(QMainWindow):
         self.midi_outport.send(msg)
         logging.info("Sent MSC message: %s", msg)
 
-    def send_noteon_message(self, channel, value):
+    def send_noteon_message(self, channel, value, conversion_type):
         # Envoyer un message NoteOn avec la valeur DMX
         note = channel % 128  # Limiter les notes à 128
-        velocity = value & 0x7F  # Limiter la vélocité à 127
+
+        if conversion_type == "Proportionate":
+            velocity = int((value / 255) * 127)  # Conversion proportionnelle
+        elif conversion_type == "Truncated":
+            velocity = min(value, 127)  # Troncation (la valeur reste 127 pour DMX > 127)
 
         msg = mido.Message('note_on', channel=(channel - 1) % 16, note=note, velocity=velocity)
         
