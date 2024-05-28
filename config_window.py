@@ -5,6 +5,7 @@ import logging
 from config import load_config, save_config
 from midi_output import MidiOutput
 from artnet_listener import ArtNetListener
+import webbrowser
 
 class ConfigWindow(QMainWindow):
     def __init__(self):
@@ -18,7 +19,7 @@ class ConfigWindow(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Configuration')
-        self.setGeometry(100, 100, 400, 500)
+        self.setGeometry(100, 100, 400, 600)
 
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
@@ -70,11 +71,29 @@ class ConfigWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_artnet_listener)
         self.start_button.setEnabled(True)
 
+        # Donation Section
+        donation_group = QGroupBox("Donation")
+        donation_layout = QVBoxLayout()
+
+        donation_message = QLabel("If you use this soft for professional purpose, please consider making a donation.")
+        donation_layout.addWidget(donation_message)
+
+        name_label = QLabel("Rémi Dubot")
+        donation_layout.addWidget(name_label)
+
+        paypal_button = QPushButton("Donate via PayPal")
+        paypal_button.setStyleSheet("padding: 10px; font-size: 14px;")
+        paypal_button.clicked.connect(lambda: webbrowser.open("https://paypal.me/Rdbt82"))
+        donation_layout.addWidget(paypal_button)
+
+        donation_group.setLayout(donation_layout)
+
         # Add groups to main layout
         main_layout.addWidget(midi_group)
         main_layout.addWidget(mode_group)
         main_layout.addWidget(conversion_group)
         main_layout.addWidget(self.start_button)
+        main_layout.addWidget(donation_group)
 
         self.setCentralWidget(central_widget)
 
