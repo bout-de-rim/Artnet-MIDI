@@ -2,7 +2,7 @@ import sys
 import socket
 import mido
 import logging
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QComboBox
+from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QComboBox, QRadioButton, QButtonGroup
 from PyQt5.QtGui import QIcon
 
 # Configurer le logging
@@ -20,7 +20,7 @@ class ConfigWindow(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Configuration')
-        self.setGeometry(100, 100, 300, 200)
+        self.setGeometry(100, 100, 300, 300)
 
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
@@ -31,6 +31,20 @@ class ConfigWindow(QMainWindow):
         self.midi_ports_combo = QComboBox(self)
         self.midi_ports_combo.addItems(mido.get_output_names())
         layout.addWidget(self.midi_ports_combo)
+
+        self.mode_label = QLabel("Select Mode", self)
+        layout.addWidget(self.mode_label)
+
+        self.msc_mode = QRadioButton("MSC", self)
+        self.noteon_mode = QRadioButton("NoteOn", self)
+        self.msc_mode.setChecked(True)
+
+        self.mode_group = QButtonGroup()
+        self.mode_group.addButton(self.msc_mode)
+        self.mode_group.addButton(self.noteon_mode)
+
+        layout.addWidget(self.msc_mode)
+        layout.addWidget(self.noteon_mode)
 
         self.button = QPushButton("Start Art-Net Listener", self)
         self.button.clicked.connect(self.start_artnet_listener)
@@ -57,13 +71,16 @@ class ConfigWindow(QMainWindow):
             data, addr = self.sock.recvfrom(1024)
             dmx_data = self.parse_artnet_packet(data)
             if dmx_data:
-                #logging.debug("Received Art-Net data from %s: %s", addr, dmx_data)
+                logging.debug("Received Art-Net data from %s: %s", addr, dmx_data)
                 for channel in range(1, 513):
                     dmx_value = dmx_data[channel - 1]
                     if dmx_value != self.previous_dmx_values[channel - 1]:  # Vérifier le changement d'état
                         self.previous_dmx_values[channel - 1] = dmx_value  # Mettre à jour l'état précédent
-                        msc_params = self.dmx_to_msc(channel, dmx_value)
-                        self.send_msc_set_message(*msc_params)
+                        if self.msc_mode.isChecked():
+                            msc_params = self.dmx_to_msc(channel, dmx_value)
+                            self.send_msc_set_message(*msc_params)
+                        elif self.noteon_mode.isChecked():
+                            self.send_noteon_message(channel, dmx_value)
         except BlockingIOError:
             pass
 
@@ -72,7 +89,7 @@ class ConfigWindow(QMainWindow):
             opcode = int.from_bytes(packet[8:10], byteorder='little')
             if opcode == 0x5000:  # OpOutput / ArtDMX
                 dmx_data = packet[18:]  # DMX data starts at byte 18
-                #logging.debug("Parsed Art-Net DMX data: %s", dmx_data)
+                logging.debug("Parsed Art-Net DMX data: %s", dmx_data)
                 return dmx_data
         return None
 
@@ -94,6 +111,16 @@ class ConfigWindow(QMainWindow):
         
         self.midi_outport.send(msg)
         logging.info("Sent MSC message: %s", msg)
+
+    def send_noteon_message(self, channel, value):
+        # Envoyer un message NoteOn avec la valeur DMX
+        note = channel % 128  # Limiter les notes à 128
+        velocity = value & 0x7F  # Limiter la vélocité à 127
+
+        msg = mido.Message('note_on', channel=(channel - 1) % 16, note=note, velocity=velocity)
+        
+        self.midi_outport.send(msg)
+        logging.info("Sent NoteOn message: %s", msg)
 
 def create_tray_icon(app, window):
     tray_icon = QSystemTrayIcon(QIcon("artnet2midi.png"), app)
