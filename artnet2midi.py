@@ -2,6 +2,8 @@ import sys
 import socket
 import mido
 import logging
+import json
+import os
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QComboBox, QRadioButton, QButtonGroup
 from PyQt5.QtGui import QIcon
 
@@ -11,11 +13,14 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
     logging.StreamHandler()
 ])
 
+CONFIG_FILE = 'config.json'
+
 class ConfigWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.midi_outport = None
         self.tray_icon = None
+        self.config = self.load_config()
         self.initUI()
         self.previous_dmx_values = [0] * 512  # Initialiser les valeurs précédentes des canaux DMX
 
@@ -42,7 +47,6 @@ class ConfigWindow(QMainWindow):
 
         self.msc_mode = QRadioButton("MSC", self)
         self.noteon_mode = QRadioButton("NoteOn", self)
-        self.msc_mode.setChecked(True)
 
         self.mode_group = QButtonGroup()
         self.mode_group.addButton(self.msc_mode)
@@ -64,6 +68,39 @@ class ConfigWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
+        self.load_ui_settings()
+
+    def load_config(self):
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        else:
+            return {}
+
+    def save_config(self):
+        self.config['midi_output'] = self.midi_ports_combo.currentText()
+        self.config['mode'] = 'MSC' if self.msc_mode.isChecked() else 'NoteOn'
+        self.config['conversion_type'] = self.noteon_conversion_combo.currentText()
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(self.config, f)
+
+    def load_ui_settings(self):
+        if 'midi_output' in self.config:
+            index = self.midi_ports_combo.findText(self.config['midi_output'])
+            if index != -1:
+                self.midi_ports_combo.setCurrentIndex(index)
+
+        if 'mode' in self.config:
+            if self.config['mode'] == 'MSC':
+                self.msc_mode.setChecked(True)
+            else:
+                self.noteon_mode.setChecked(True)
+
+        if 'conversion_type' in self.config:
+            index = self.noteon_conversion_combo.findText(self.config['conversion_type'])
+            if index != -1:
+                self.noteon_conversion_combo.setCurrentIndex(index)
+
     def open_midi_output(self, selected_port):
         try:
             if self.midi_outport:
@@ -81,11 +118,13 @@ class ConfigWindow(QMainWindow):
     def update_midi_output(self):
         selected_port = self.midi_ports_combo.currentText()
         if selected_port and self.open_midi_output(selected_port):
+            self.save_config()
             QMessageBox.information(self, "MIDI Output Updated", f"MIDI output port updated to: {selected_port}")
     
     def start_artnet_listener(self):
         selected_port = self.midi_ports_combo.currentText()
         if selected_port and self.open_midi_output(selected_port):
+            self.save_config()
             logging.info("Selected MIDI output port: %s", selected_port)
             self.UDP_IP = "0.0.0.0"
             self.UDP_PORT = 6454
