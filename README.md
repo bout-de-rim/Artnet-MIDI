@@ -3,7 +3,7 @@
 This is a tool to convert ArtNet DMX data to MIDI messages.
 
 ## Current Version
-- **v1.0 Beta** : [Download the latest beta release](https://github.com/USERNAME/REPOSITORY/releases/tag/v1.0-beta)
+- **v1.0 Beta** : [Download the latest beta release](https://github.com/USERNAME/REPOSITORY/releases/tag/v1.1-beta)
 
 ## Features
 - Converts ArtNet DMX data to MIDI MSC and NoteOn messages
