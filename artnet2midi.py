@@ -43,6 +43,6 @@ if __name__ == '__main__':
     window.show()  # Show the configuration window at launch
 
     exit_code = app.exec_()
-    if window.midi_outport:
-        window.midi_outport.close()  # Fermer correctement le port MIDI
+    if window.midi_output:
+        window.midi_output.midi_outport.close()  # Fermer correctement le port MIDI
     sys.exit(exit_code)

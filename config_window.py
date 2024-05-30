@@ -1,3 +1,5 @@
+import sys
+import os
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QButtonGroup, QMessageBox, QSystemTrayIcon, QGroupBox, QHBoxLayout, QSpinBox, QListWidget
 from PyQt5.QtGui import QIcon, QFont, QPainter, QColor
 from PyQt5.QtCore import Qt
@@ -7,6 +9,11 @@ from config import load_config, save_config
 from midi_output import MidiOutput
 from artnet_listener import ArtNetListener
 import webbrowser
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 class StatusIndicator(QLabel):
     def __init__(self):
@@ -52,7 +59,7 @@ class ConfigWindow(QMainWindow):
     def tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.DoubleClick:
             self.show()
-
+            
     def initUI(self):
         self.setWindowTitle('Configuration')
         self.setGeometry(100, 100, 400, 700)
@@ -219,7 +226,6 @@ class ConfigWindow(QMainWindow):
     def timerEvent(self, event):
         data, addr = self.artnet_listener.receive_packet()
         dmx_data = self.artnet_listener.parse_artnet_packet(data)
-        self.update_received_universes()
         if dmx_data:
             self.status_indicator.update_status("RECEIVED")
             for channel in range(1, 513):
@@ -239,7 +245,6 @@ class ConfigWindow(QMainWindow):
 
     def update_received_universes(self):
         self.received_list.clear()
-        #logging.debug("Updating received universes list: %s", self.artnet_listener.received_universes)
         for universe in sorted(self.artnet_listener.received_universes):
             self.received_list.addItem(str(universe))
 
@@ -253,3 +258,38 @@ class ConfigWindow(QMainWindow):
         self.hide()
         if self.tray_icon:
             self.tray_icon.showMessage("Artnet2MIDI", "The application is still running in the system tray.", QSystemTrayIcon.Information)
+
+def create_tray_icon(app, window):
+    tray_icon = QSystemTrayIcon(QIcon(resource_path("artnet2midi.png")), app)
+    window.tray_icon = tray_icon
+    
+    tray_menu = QMenu()
+    
+    open_action = QAction("Open Configuration", tray_icon)
+    open_action.triggered.connect(lambda: window.show())
+    tray_menu.addAction(open_action)
+
+    exit_action = QAction("Exit", tray_icon)
+    exit_action.triggered.connect(app.quit)
+    tray_menu.addAction(exit_action)
+
+    tray_icon.setContextMenu(tray_menu)
+    tray_icon.activated.connect(window.tray_icon_activated)
+    tray_icon.show()
+    logging.info("System tray icon created")
+
+    return tray_icon
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    
+    window = ConfigWindow()
+    
+    tray_icon = create_tray_icon(app, window)
+    
+    window.show()  # Show the configuration window at launch
+
+    exit_code = app.exec_()
+    if window.midi_outport:
+        window.midi_outport.close()  # Fermer correctement le port MIDI
+    sys.exit(exit_code)

@@ -6,7 +6,7 @@ block_cipher = None
 a = Analysis(['artnet2midi.py'],
              pathex=['.'],
              binaries=[],
-             datas=[('artnet2midi.png', '.'),],
+             datas=[('artnet2midi.png', '.')],
              hiddenimports=['mido.backends.rtmidi'],
              hookspath=[],
              runtime_hooks=[],
@@ -38,9 +38,3 @@ coll = COLLECT(exe,
                upx=True,
                upx_exclude=[],
                name='artnet2midi')
-
-
-app = BUNDLE(coll,
-             name='artnet2midi',
-             icon='artnet2midi.ico',
-             bundle_identifier=None)
