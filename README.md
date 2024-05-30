@@ -12,7 +12,7 @@ This is a tool to convert ArtNet DMX data to MIDI messages.
 - Provides a tray icon for quick access and configuration
 
 ## Usage
-1. Download the latest release from the [Releases](https://github.com/USERNAME/REPOSITORY/releases](https://github.com/bout-de-rim/Artnet-MIDI/releases/tag/v1.1-beta)](https://github.com/bout-de-rim/Artnet-MIDI/releases/) page.
+1. Download the latest release from the [Releases](https://github.com/USERNAME/REPOSITORY/releases) page.
 2. Run the `artnet2midi.exe` file.
 
 ## Contributing
