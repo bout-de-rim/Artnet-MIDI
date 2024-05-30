@@ -28,6 +28,7 @@ class ArtNetListener:
             opcode = int.from_bytes(packet[8:10], byteorder='little')
             if opcode == 0x5000:  # OpOutput / ArtDMX
                 universe = int.from_bytes(packet[14:16], byteorder='little')
+                #logging.debug("Received packet from universe %d", universe)
                 self.received_universes.add(universe)
                 if universe == self.universe:
                     dmx_data = packet[18:]  # DMX data starts at byte 18

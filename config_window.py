@@ -45,12 +45,13 @@ class ConfigWindow(QMainWindow):
         self.config = load_config()
         self.status_indicator = StatusIndicator()
         self.previous_dmx_values = [0] * 512  # Initialiser les valeurs précédentes des canaux DMX
+        self.update_interval = 50  # Intervalle de mise à jour en ticks (ajustable selon les besoins)
+        self.tick_counter = 0
         self.initUI()
 
     def tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.DoubleClick:
             self.show()
-
 
     def initUI(self):
         self.setWindowTitle('Configuration')
@@ -218,9 +219,9 @@ class ConfigWindow(QMainWindow):
     def timerEvent(self, event):
         data, addr = self.artnet_listener.receive_packet()
         dmx_data = self.artnet_listener.parse_artnet_packet(data)
+        self.update_received_universes()
         if dmx_data:
             self.status_indicator.update_status("RECEIVED")
-            self.update_received_universes()
             for channel in range(1, 513):
                 dmx_value = dmx_data[channel - 1]
                 if dmx_value != self.previous_dmx_values[channel - 1]:  # Vérifier le changement d'état
@@ -231,9 +232,14 @@ class ConfigWindow(QMainWindow):
                     elif self.noteon_mode.isChecked():
                         conversion_type = self.noteon_conversion_combo.currentText()
                         self.midi_output.send_noteon_message(channel, dmx_value, conversion_type)
+        self.tick_counter += 1
+        if self.tick_counter >= self.update_interval:
+            self.update_received_universes()
+            self.tick_counter = 0
 
     def update_received_universes(self):
         self.received_list.clear()
+        #logging.debug("Updating received universes list: %s", self.artnet_listener.received_universes)
         for universe in sorted(self.artnet_listener.received_universes):
             self.received_list.addItem(str(universe))
 
