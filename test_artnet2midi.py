@@ -6,7 +6,7 @@ import signal
 def test_startup():
     try:
         # Start the application
-        process = subprocess.Popen(['./dist/artnet2midi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(['./dist/artnet2midi.app'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("Application started successfully")
         
         # Wait for a few seconds to ensure it's running
