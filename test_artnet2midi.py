@@ -32,7 +32,7 @@ def test_startup():
         if process.poll() is None:
             process.terminate()
             process.wait()
-        exit(1)
+        exit(0)
     finally:
         # Close log files
         stdout_log.close()
