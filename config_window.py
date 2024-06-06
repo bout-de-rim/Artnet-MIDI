@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButt
 from PyQt5.QtGui import QIcon, QFont, QPainter, QColor
 from PyQt5.QtCore import Qt
 import mido
+import mido.backends.rtmidi # Import the rtmidi backend to avoid issues with PyInstaller
 import logging
 from config import load_config, save_config
 from midi_output import MidiOutput
