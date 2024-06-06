@@ -10,7 +10,7 @@ def test_startup():
         stderr_log = open("stderr.log", "w")
         
         # Start the application
-        process = subprocess.Popen(['./dist/artnet2midi'], stdout=stdout_log, stderr=stderr_log)
+        process = subprocess.Popen(['./dist/artnet2midi.app'], stdout=stdout_log, stderr=stderr_log)
         print("Application started successfully")
         
         # Wait for a few seconds to ensure it's running
