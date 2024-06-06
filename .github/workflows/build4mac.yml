@@ -1,9 +1,10 @@
-name: Build macOS Application
+name: Build and Test macOS Application
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:  # Permet le déclenchement manuel
 
 jobs:
   build:
@@ -26,10 +27,14 @@ jobs:
     - name: Build with PyInstaller
       run: |
         pip install pyinstaller
-        pyinstaller --onefile artnet2midi.py
+        pyinstaller --onefile --name artnet2midi.app artnet2midi.py
+
+    - name: Test application startup
+      run: |
+        python test_artnet2midi.py
 
     - name: Upload Release Asset
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: artnet2midi-macos
-        path: dist/artnet2midi
+        path: dist/artnet2midi.app
