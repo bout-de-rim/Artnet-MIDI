@@ -33,6 +33,24 @@ jobs:
       run: |
         python test_artnet2midi.py
 
+    - name: Display stdout log
+      run: |
+        echo "stdout log:"
+        cat stdout.log
+
+    - name: Display stderr log
+      run: |
+        echo "stderr log:"
+        cat stderr.log
+
+    - name: Upload logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: logs
+        path: |
+          stdout.log
+          stderr.log
+
     - name: Upload Release Asset
       uses: actions/upload-artifact@v4
       with:

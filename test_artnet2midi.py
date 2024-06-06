@@ -5,8 +5,12 @@ import signal
 
 def test_startup():
     try:
+        # Open log files
+        stdout_log = open("stdout.log", "w")
+        stderr_log = open("stderr.log", "w")
+        
         # Start the application
-        process = subprocess.Popen(['./dist/artnet2midi.app'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(['./dist/artnet2midi'], stdout=stdout_log, stderr=stderr_log)
         print("Application started successfully")
         
         # Wait for a few seconds to ensure it's running
@@ -29,6 +33,10 @@ def test_startup():
             process.terminate()
             process.wait()
         exit(1)
+    finally:
+        # Close log files
+        stdout_log.close()
+        stderr_log.close()
 
 if __name__ == "__main__":
     test_startup()
